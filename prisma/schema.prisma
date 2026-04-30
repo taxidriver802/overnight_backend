@@ -1,0 +1,77 @@
+// Phase 1 — grows per BUILD_PLAN subphases (Shift 1.4, Audit 1.5, …)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  GUARD
+  MANAGER
+  ADMIN
+
+  @@map("user_role")
+}
+
+model Property {
+  id        String    @id @default(cuid())
+  name      String
+  timezone  String    @default("America/Chicago")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  @@map("properties")
+}
+
+model User {
+  id                 String    @id @default(cuid())
+  employeeId         String    @unique @map("employee_id")
+  name               String
+  role               UserRole
+  pinHash            String    @map("pin_hash")
+  lockoutUntil       DateTime? @map("lockout_until")
+  failedPinAttempts  Int       @default(0) @map("failed_pin_attempts")
+  lastFailedPinAt    DateTime? @map("last_failed_pin_at")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+  deletedAt          DateTime? @map("deleted_at")
+
+  sessions DeviceSession[]
+
+  @@index([employeeId])
+  @@map("users")
+}
+
+model DeviceSession {
+  id         String    @id @default(cuid())
+  userId     String    @map("user_id")
+  deviceId   String    @map("device_id")
+  lastSeenAt DateTime  @default(now()) @map("last_seen_at")
+  revokedAt  DateTime? @map("revoked_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refreshTokens RefreshToken[]
+
+  @@index([userId, deviceId])
+  @@map("device_sessions")
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  sessionId String    @map("session_id")
+  tokenHash String    @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  session DeviceSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([tokenHash])
+  @@map("refresh_tokens")
+}
